@@ -228,8 +228,8 @@ void Measurer::print_results()
 
 int main(int argc, char* argv[])
 {
-    int Nx, Ny, Ttherm, Tmc, corr_time_max;
-    double temp, corr_time_dt;
+    int Nx, Ny, Ttherm, Tmc;
+    double temp, corr_time_dt, corr_time_max;
     if (argc != 8) {
         cerr << "Usage: " << argv[0] << " [Nx] [Ny] [temp] [Ttherm] [Tmc] [corr_time_max] [corr_time_dt]" << endl;
         return -1;
@@ -239,7 +239,7 @@ int main(int argc, char* argv[])
         temp = atof(argv[3]);
         Ttherm = atoi(argv[4]);
         Tmc = atoi(argv[5]);
-        corr_time_max = atoi(argv[6]);
+        corr_time_max = atof(argv[6]);
         corr_time_dt = atof(argv[7]);
     }
 
