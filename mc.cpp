@@ -7,6 +7,7 @@
 #include <cmath>
 #include <map>
 #include <numeric>
+#include <sys/time.h>
 
 using namespace std;
 
@@ -260,7 +261,9 @@ int main(int argc, char* argv[])
         corr_time_dt = atof(argv[7]);
     }
 
-    srand(time(nullptr));
+    timeval t1;
+    gettimeofday(&t1, NULL);
+    srand(t1.tv_usec + t1.tv_sec*1000000);
 
     IsingMCWorker mc(Nx, Ny, 1.0);
     mc.init_lattice_random();
