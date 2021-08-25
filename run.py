@@ -44,8 +44,8 @@ client = pymongo.MongoClient(args.host, args.port)
 
 while True:
     data = subprocess.check_output(opts, stderr=subprocess.DEVNULL)
-    print("Got system (E={0:.3f}, M={1:.3f})".format(data[0], data[2]))
     data = list(map(float, data.split()))
+    print("Got system (E={0:.3f}, M={1:.3f})".format(data[0], data[2]))
     result = {"Nx": Nx,
               "Ny": Ny,
               "T": temp,
@@ -57,6 +57,8 @@ while True:
               "Magnetization2": data[3],
               "corr_times": data[4::2],
               "corr_values": data[5::2]}
+    print(data[4::2])
+    print(data[5::2])
     while True:
         try:
             client.numerics.ising.insert_one(result)
