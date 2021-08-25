@@ -43,7 +43,7 @@ void set_lattice()
 	for (int i = 0; i < SIZE; i++)
 		for (int j = 0; j < SIZE; j++)
 		{
-			lattice[i][j] =  ((distribution(generator) / (double)RAND_MAX >= 0.5) - 1) * 2 + 1;
+			lattice[i][j] = ((distribution(generator) / (double)RAND_MAX >= 0.5) - 1) * 2 + 1;
 			M += lattice[i][j];
 		}
 
@@ -81,8 +81,10 @@ void metropolis()
 			singleMom[x][y].push_back(i);
 		}
 
-		Ham.push_back(E);
-		Mom.push_back(M);
+		if (i % n == 0) {
+			Ham.push_back(E);
+			Mom.push_back(M);
+		}
 	}
 }
 
@@ -93,9 +95,9 @@ void autocorr()
 
 	double sum = 0;
 
-	for (int i = 0; i < steps; i ++) {
+	for (int i = 0; i < Mom.size(); i++) {
 		sum = 0;
-		for (int j = i; j < steps; j++) {
+		for (int j = i; j < Mom.size(); j++) {
 			sum += Mom[j] * Mom[j - i];
 		}
 		corr.push_back(sum / (steps - i));
@@ -153,7 +155,7 @@ int prod(vector <short> vec, int diff)
 	return sum;
 }
 
-vector <double> mean_vec(vector <double> vec1, int weight1, vector <double> vec2, int weight2) 
+vector <double> mean_vec(vector <double> vec1, int weight1, vector <double> vec2, int weight2)
 {
 	//  returns weighted mean vector
 
@@ -176,23 +178,23 @@ int dict_sum_d(vector <int> times, vector <int> timesd, int diff)
 	short flag = 1;
 	map<int, int> dict;
 	vector<int> timesSort;
-	
+
 	for (int i = 0; i < len; i++) {
 		if (times[i] > diff)
 			dict[times[i]] += (i + 1);
-		if (timesd[i] < steps - diff)
+		if (timesd[i] < steps)
 			dict[timesd[i]] -= (i - 1);
 	}
-	
+
 	for (int i = 0; i < len; i++) {
 		if (times[i] > diff)
 			timesSort.push_back(times[i]);
-		if (timesd[i] < steps - diff)
+		if (timesd[i] < steps)
 			timesSort.push_back(timesd[i]);
 	}
-			
+
 	timesSort.push_back(diff);
-	timesSort.push_back(steps - diff);
+	timesSort.push_back(steps);
 	sort(timesSort.begin(), timesSort.end());
 	lenSort = timesSort.size();
 
@@ -233,9 +235,9 @@ void autocorr_single()
 	// mean single spin autocorrelation S_ii
 
 	int spinNum = 0;
-	
+
 	// autocorrelation func of s_00
-	for (int d = 0; d < steps; d ++) {
+	for (int d = 0; d < steps; d++) {
 		singleCorr.push_back(dict_sum_d(singleMom[0][0], shift_vec_values(singleMom[0][0], d), d));
 		d += 9999;
 	}
@@ -243,12 +245,13 @@ void autocorr_single()
 	// averaging autocorrelation funcs of s_ji
 
 	for (int i = 0; i < SIZE; i++) {
+		cout << i;
 		for (int j = 0; j < SIZE; j++) {
 			if (i == 0 && j == 0) continue;
 			spinNum++;
 			singleSpinCorr.clear();
 			for (int d = 0; d < steps; d++) {
-				singleSpinCorr.push_back(dict_sum_d(singleMom[i][j], shift_vec_values(singleMom[i][j], d), d));
+				singleSpinCorr.push_back(dict_sum_d(singleMom[i][j], shift_vec_values(singleMom[i][j], d), d) / n);
 				d += 9999;
 			}
 			singleCorr = mean_vec(singleCorr, spinNum, singleSpinCorr, 1);
@@ -279,7 +282,7 @@ int main()
 	ofstream myfile("ham" + std::to_string(T) + ".txt");
 	if (myfile.is_open())
 	{
-		for (int count = 0; count < steps; count++) {
+		for (int count = 0; count < Ham.size(); count++) {
 			myfile << Ham[count] << " ";
 		}
 		myfile.close();
@@ -289,7 +292,7 @@ int main()
 	ofstream myfile1("mom" + std::to_string(T) + ".txt");
 	if (myfile1.is_open())
 	{
-		for (int count1 = 0; count1 < steps; count1++) {
+		for (int count1 = 0; count1 < Mom.size(); count1++) {
 			myfile1 << Mom[count1] << " ";
 		}
 		myfile1.close();
