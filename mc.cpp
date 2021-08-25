@@ -168,9 +168,11 @@ int Measurer::autocorr_helper(vector<int> times, int maxtime, int diff)
     timesSort.push_back(maxtime);
     sort(timesSort.begin(), timesSort.end());
 
-    int curt = diff;
     short flag = +1;
-    for (int i = 0; (i < timesSort.size()) && (timesSort[i] < diff); i++)
+
+    int curt = diff;
+    
+    for (int i = 0; (i < times.size()) && (times[i] < diff); i++)
         flag = -flag;
     for (auto p : timesSort) {
         sum += (p - curt)*flag;
@@ -210,17 +212,9 @@ double Measurer::calc_autocorr(int maxtime, int diff)
     double sum = 0;
     for (int i = 0; i < system->Nsites; i++) {
         sum += (double)Measurer::autocorr_helper(flip_times[i], maxtime, diff) / (maxtime - diff) - spin_avg[i]*spin_avg[i];
-/*        if (i == 5) {
-            cout << "Flip times for spin #5: ";
-            for (auto x : flip_times[i]) {
-                cout << x << " ";
-            }
-            cout << endl;
-            cout << "Average: " << spin_avg[5] << endl;
-            cout << "Autocorr (" << diff << "):" << (double)Measurer::autocorr_helper(flip_times[5], maxtime, diff) / (maxtime - diff) << endl;
-        }*/
     }
     sum /= system->Nsites;
+
     return sum;
 }
 
@@ -229,17 +223,7 @@ void Measurer::print_results()
 {
     cout << "Energy: " << energy << endl;
     cout << "Magnetization: " << magnetization << endl;
-/*    cout << "Energies history: ";
-    for (auto E : energies) {
-        cout << (double)E / system->Nsites << " ";
-    }
-    cout << endl;
 
-    cout << "Magnetizations history: ";
-    for (auto M : magnetizations) {
-        cout << (double)M / system->Nsites << " ";
-    }
-    cout << endl;*/
 }
 
 int main(int argc, char* argv[])
@@ -280,6 +264,7 @@ int main(int argc, char* argv[])
     m.calc_results();
     m.calc_avg(Tmc*mc.Nsites);
     m.print_results();
+
     for (double t = 0; t < corr_time_max; t += corr_time_dt) {
         cout << t << " " << m.calc_autocorr(Tmc*mc.Nsites, round(t*mc.Nsites)) << endl;
     }
