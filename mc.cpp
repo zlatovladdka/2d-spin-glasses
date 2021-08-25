@@ -48,7 +48,9 @@ public:
     double calc_autocorr(int maxtime, int diff);
 
     double energy = 0.0;
+    double energy_fluct = 0.0;
     double magnetization = 0.0;
+    double magnetization_fluct = 0.0;
 private:
     IsingMCWorker* system;
 
@@ -146,9 +148,24 @@ void Measurer::calc_results()
     energy /= energies.size();
     energy /= system->Nsites;
 
+    energy_fluct = accumulate(energies.begin(), energies.end(), 0.0, 
+            [](double sum, double energy){ return sum + energy*energy; } );
+    energy_fluct /= energies.size();
+    energy_fluct /= system->Nsites*system->Nsites;
+    energy_fluct -= energy*energy;
+    energy_fluct *= system->Nsites;
+
     magnetization = accumulate(magnetizations.begin(), magnetizations.end(), 0.0);
     magnetization /= magnetizations.size();
     magnetization /= system->Nsites;
+
+    magnetization_fluct = accumulate(magnetizations.begin(), magnetizations.end(), 0.0, 
+            [](double sum, double magn){ return sum + magn*magn; } );
+    magnetization_fluct /= magnetizations.size();
+    magnetization_fluct /= system->Nsites*system->Nsites;
+    magnetization_fluct -= magnetization*magnetization;
+    magnetization_fluct *= system->Nsites;
+
 }
 
 int Measurer::autocorr_helper(vector<int> times, int maxtime, int diff)
@@ -221,8 +238,8 @@ double Measurer::calc_autocorr(int maxtime, int diff)
 
 void Measurer::print_results()
 {
-    cout << "Energy: " << energy << endl;
-    cout << "Magnetization: " << magnetization << endl;
+    cout << energy << " " << energy_fluct << endl;
+    cout << magnetization << " " << magnetization_fluct << endl;
 
 }
 
