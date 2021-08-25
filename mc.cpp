@@ -18,7 +18,7 @@ public:
 
     void init_lattice_random();
     void print_system();
-    
+
     inline short& lat(int x, int y) {
         // Periodic boundary conditions
         return lattice[((x + Nx)%Nx)*Ny + (y+Ny)%Ny];
@@ -38,28 +38,30 @@ public:
 class Measurer {
 public:
     Measurer(IsingMCWorker *_system);
-    void start();
     void measure();
 
     void calc_results();
     void print_results();
 
     void spin_flip(int x, int y, int time);
+    void calc_avg(int maxtime);
     double calc_autocorr(int maxtime, int diff);
 
-    static int dict_sum_d(vector<int> times, int maxtime, int diff);
+    double energy = 0.0;
+    double magnetization = 0.0;
 private:
     IsingMCWorker* system;
-    bool active = false;
-    vector<short> init_lattice;
 
     vector<int> magnetizations;
     vector<double> energies;
 
-    double energy = 0.0;
-    double magnetization = 0.0;
-
     vector<vector<int>> flip_times;
+    vector<double> spin_avg;
+
+    int maxtime = 0;
+
+    static int autocorr_helper(vector<int> times, int maxtime, int diff);
+    static int avg_helper(vector<int> times, int maxtime);
 };
 
 IsingMCWorker::IsingMCWorker(int _Nx, int _Ny, double _J)
@@ -70,7 +72,7 @@ IsingMCWorker::IsingMCWorker(int _Nx, int _Ny, double _J)
     lattice.resize(Nsites);
 }
 
-void IsingMCWorker::init_lattice_random() 
+void IsingMCWorker::init_lattice_random()
 {
     magnetization = 0;
     generate(lattice.begin(), lattice.end(), [&]() {
@@ -99,15 +101,15 @@ void IsingMCWorker::print_system() {
     cout << "Energy: " << energy << endl;
 }
 
-void IsingMCWorker::metropolis(int time, double T, Measurer *m = nullptr) 
+void IsingMCWorker::metropolis(int time, double T, Measurer *m = nullptr)
 {
 	for (long int i = 0; i < time; i++)
 	{
-        for (int j = 0; j < Nsites; j++) {
+        for (long int j = 0; j < Nsites; j++) {
             int x = rand() % Nx;
             int y = rand() % Ny;
             int sum = lat(x-1,y) + lat(x+1, y) + lat(x,y-1) + lat(x, y+1);
-            
+
             double dE = 2*J*lat(x,y)*sum;
 
             if (dE <= 0 || (rand() / (double)RAND_MAX) < exp(-dE/T))
@@ -122,31 +124,34 @@ void IsingMCWorker::metropolis(int time, double T, Measurer *m = nullptr)
 	}
 }
 
-Measurer::Measurer(IsingMCWorker *_system) 
+Measurer::Measurer(IsingMCWorker *_system)
     : system(_system)
 {
-}
-
-void Measurer::start()
-{
-    active = true;
-    init_lattice = system->lattice;
     flip_times.resize(system->Nsites);
 }
 
 void Measurer::measure()
 {
-    if (!active) return;
     magnetizations.push_back(system->magnetization);
     energies.push_back(system->energy);
 }
 
 void Measurer::spin_flip(int x, int y, int time) {
-    if (!active) return;
     flip_times[x*system->Ny + y].push_back(time);
 }
 
-int Measurer::dict_sum_d(vector<int> times, int maxtime, int diff)
+void Measurer::calc_results()
+{
+    energy = accumulate(energies.begin(), energies.end(), 0.0);
+    energy /= energies.size();
+    energy /= system->Nsites;
+
+    magnetization = accumulate(magnetizations.begin(), magnetizations.end(), 0.0);
+    magnetization /= magnetizations.size();
+    magnetization /= system->Nsites;
+}
+
+int Measurer::autocorr_helper(vector<int> times, int maxtime, int diff)
 {
     int sum = 0;
     vector<int> timesSort;
@@ -162,7 +167,7 @@ int Measurer::dict_sum_d(vector<int> times, int maxtime, int diff)
 
     timesSort.push_back(maxtime);
     sort(timesSort.begin(), timesSort.end());
-    
+
     int curt = diff;
     short flag = +1;
     for (int i = 0; (i < timesSort.size()) && (timesSort[i] < diff); i++)
@@ -176,74 +181,110 @@ int Measurer::dict_sum_d(vector<int> times, int maxtime, int diff)
     return sum;
 }
 
-void Measurer::calc_results()
+int Measurer::avg_helper(vector<int> times, int maxtime)
 {
-    energy = accumulate(energies.begin(), energies.end(), 0.0);
-    energy /= energies.size();
-    energy /= system->Nsites;
+    if (times.size() == 0)
+        return maxtime;
+    int sum = 0;
+    int curt = 0;
+    int flag = +1;
+    for (int i = 0; i < times.size(); i++) {
+        sum += (times[i] - curt)*flag;
+        flag = -flag;
+        curt = times[i];
+    }
+    sum += (maxtime - times[times.size()-1])*flag;
+    return sum;
+}
 
-    magnetization = accumulate(magnetizations.begin(), magnetizations.end(), 0.0);
-    magnetization /= magnetizations.size();
-    magnetization /= system->Nsites;
+void Measurer::calc_avg(int maxtime)
+{
+    spin_avg.resize(system->Nsites);
+    for (int i = 0; i < system->Nsites; i++) {
+        spin_avg[i] = (double)Measurer::avg_helper(flip_times[i], maxtime) / maxtime;
+    }
 }
 
 double Measurer::calc_autocorr(int maxtime, int diff)
 {
     double sum = 0;
-    for (auto v : flip_times) 
-    {
-        sum += Measurer::dict_sum_d(v, maxtime, diff);
+    for (int i = 0; i < system->Nsites; i++) {
+        sum += (double)Measurer::autocorr_helper(flip_times[i], maxtime, diff) / (maxtime - diff) - spin_avg[i]*spin_avg[i];
+/*        if (i == 5) {
+            cout << "Flip times for spin #5: ";
+            for (auto x : flip_times[i]) {
+                cout << x << " ";
+            }
+            cout << endl;
+            cout << "Average: " << spin_avg[5] << endl;
+            cout << "Autocorr (" << diff << "):" << (double)Measurer::autocorr_helper(flip_times[5], maxtime, diff) / (maxtime - diff) << endl;
+        }*/
     }
-    sum /= (maxtime - diff);
     sum /= system->Nsites;
-    return sum - magnetization*magnetization;
+    return sum;
 }
 
 
-void Measurer::print_results() 
+void Measurer::print_results()
 {
-    cout << "Energies: ";
+    cout << "Energy: " << energy << endl;
+    cout << "Magnetization: " << magnetization << endl;
+/*    cout << "Energies history: ";
     for (auto E : energies) {
         cout << (double)E / system->Nsites << " ";
     }
     cout << endl;
 
-    cout << "Magnetizations: ";
+    cout << "Magnetizations history: ";
     for (auto M : magnetizations) {
         cout << (double)M / system->Nsites << " ";
     }
-    cout << endl;
+    cout << endl;*/
 }
 
-int main()
+int main(int argc, char* argv[])
 {
-    double J = 1.0;
-    double temp = 1.0;
-    int Ttherm = 10000;
-    int Trun = 10000;
-
+    int Nx, Ny, Ttherm, Tmc, corr_time_max;
+    double temp, corr_time_dt;
+    if (argc != 8) {
+        cerr << "Usage: " << argv[0] << " [Nx] [Ny] [temp] [Ttherm] [Tmc] [corr_time_max] [corr_time_dt]" << endl;
+        return -1;
+    } else {
+        Nx = atoi(argv[1]);
+        Ny = atoi(argv[2]);
+        temp = atof(argv[3]);
+        Ttherm = atoi(argv[4]);
+        Tmc = atoi(argv[5]);
+        corr_time_max = atoi(argv[6]);
+        corr_time_dt = atof(argv[7]);
+    }
 
     srand(time(nullptr));
 
-    IsingMCWorker mc(100, 100, J);
+    IsingMCWorker mc(Nx, Ny, 1.0);
     mc.init_lattice_random();
 
-    cout << "Thermalizing...";
-    Measurer m(&mc);
-    mc.metropolis(Ttherm, temp, &m);
-    cout << "done" << endl;
+    cerr << "Thermalizing...";
+    mc.metropolis(Ttherm, temp);
+    cerr << "done" << endl;
 
-    mc.print_system();
-   
-    cout << "Measuring...";
-    m.start();
-    mc.metropolis(Trun, temp, &m);
-    cout << "done" << endl;
+    cerr << "Measuring...";
+
+    Measurer m(&mc);
+    mc.metropolis(Tmc, temp, &m);
+
+    cerr << "done" << endl;
+
+    cerr << "Calculating...";
 
     m.calc_results();
-    for (int t = 0; t < Trun / 2; t += 10) {
-        cout << t << " " << m.calc_autocorr(Trun*mc.Nsites, t*mc.Nsites) << endl;
+    m.calc_avg(Tmc*mc.Nsites);
+    m.print_results();
+    for (double t = 0; t < corr_time_max; t += corr_time_dt) {
+        cout << t << " " << m.calc_autocorr(Tmc*mc.Nsites, round(t*mc.Nsites)) << endl;
     }
+
+    cerr << "done" << endl;
 
     return 0;
 }
