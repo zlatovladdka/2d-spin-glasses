@@ -1,15 +1,16 @@
 #include <memory>
 #include <vector>
-#include <cstdlib>
 #include <algorithm>
 #include <iostream>
-#include <chrono>
 #include <cmath>
 #include <map>
 #include <numeric>
-#include <sys/time.h>
+#include <random>
 
 using namespace std;
+
+static random_device r;
+static default_random_engine engine(r());
 
 class Measurer;
 
@@ -106,16 +107,19 @@ void IsingMCWorker::print_system() {
 
 void IsingMCWorker::metropolis(int time, double T, Measurer *m = nullptr)
 {
+    uniform_int_distribution<int> distx(0, Nx-1);
+    uniform_int_distribution<int> disty(0, Ny-1);
+    uniform_real_distribution<double> distmc(0, 1);
 	for (long int i = 0; i < time; i++)
 	{
         for (long int j = 0; j < Nsites; j++) {
-            int x = rand() % Nx;
-            int y = rand() % Ny;
+            int x = distx(engine);
+            int y = disty(engine);
             int sum = lat(x-1,y) + lat(x+1, y) + lat(x,y-1) + lat(x, y+1);
 
             double dE = 2*J*lat(x,y)*sum;
 
-            if (dE <= 0 || (rand() / (double)RAND_MAX) < exp(-dE/T))
+            if (dE <= 0 || distmc(engine) < exp(-dE/T))
             {
                 lat(x, y) = -lat(x, y);
                 magnetization += 2*lat(x,y);
@@ -260,10 +264,6 @@ int main(int argc, char* argv[])
         corr_time_max = atof(argv[6]);
         corr_time_dt = atof(argv[7]);
     }
-
-    timeval t1;
-    gettimeofday(&t1, NULL);
-    srand(t1.tv_usec + t1.tv_sec*1000000);
 
     IsingMCWorker mc(Nx, Ny, 1.0);
     mc.init_lattice_random();
