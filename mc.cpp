@@ -93,15 +93,15 @@ void IsingMCWorker::init_lattice_random()
 }
 
 void IsingMCWorker::print_system() {
-    cout << " === System state === " << endl;
+    cerr << " === System state === " << endl;
     for (int i = 0; i < Nx; i++) {
         for (int j = 0; j < Ny; j++) {
-            cout << (lat(i,j) == +1 ? '+' : '-');
+            cerr << (lat(i,j) == +1 ? '+' : '-');
         }
-        cout << endl;
+        cerr << endl;
     }
-    cout << "Magnetization: " << magnetization << endl;
-    cout << "Energy: " << energy << endl;
+    cerr << "Magnetization: " << magnetization << endl;
+    cerr << "Energy: " << energy << endl;
 }
 
 void IsingMCWorker::metropolis(int time, double T, Measurer *m = nullptr)
@@ -272,12 +272,14 @@ int main(int argc, char* argv[])
     mc.metropolis(Ttherm, temp);
     cerr << "done" << endl;
 
-    cerr << "Measuring...";
+    mc.print_system();
 
+    cerr << "Measuring...";
     Measurer m(&mc);
     mc.metropolis(Tmc, temp, &m);
-
     cerr << "done" << endl;
+
+    mc.print_system();
 
     cerr << "Calculating...";
 
