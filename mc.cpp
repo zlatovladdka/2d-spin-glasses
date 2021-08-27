@@ -18,8 +18,14 @@ class IsingMCWorker {
 public:
     IsingMCWorker(int _Nx, int _Ny, double _J);
 
+    void init_J_lattice_random();
     void init_lattice_random();
     void print_system();
+
+    inline short& Jlat(int x, int y) {
+        // Periodic boundary conditions
+        return J_lattice[((x + (2 * Nx)) % (2 * Nx)) * Ny + (y + Ny) % Ny];
+    }
 
     inline short& lat(int x, int y) {
         // Periodic boundary conditions
@@ -30,6 +36,7 @@ public:
     // Lattice parameters
     int Nx, Ny, Nsites;
     vector<short> lattice;
+    vector<short> J_lattice;
     // System parameters
     double J;
     // Observables
@@ -89,8 +96,19 @@ void IsingMCWorker::init_lattice_random()
     for (int i = 0; i < Nx; i++) {
         for (int j = 0; j < Ny; j++) {
             energy += -J*lat(i, j)*(lat(i, j+1) + lat(i+1,j));
+
+            // energy += -lat(i, j)*(J_lat(2 * i, j) * lat(i, j+1) + J_lat(2 * i + 1, j) * lat(i+1,j))
+
         }
     }
+}
+
+void IsingMCWorker::init_J_lattice_random()
+{
+    generate(J_lattice.begin(), J_lattice.end(), [&]() {
+        short J_rand = 2 * (rand() % 2) - 1;
+        return J_rand;
+        });
 }
 
 void IsingMCWorker::print_system() {
@@ -271,8 +289,6 @@ int main(int argc, char* argv[])
     cerr << "Thermalizing...";
     mc.metropolis(Ttherm, temp);
     cerr << "done" << endl;
-
-    mc.print_system();
 
     cerr << "Measuring...";
     Measurer m(&mc);
