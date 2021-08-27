@@ -20,6 +20,7 @@ public:
 
     void init_J_lattice_random();
     void init_lattice_random();
+    void print_J_lattice();
     void print_system();
 
     inline short& Jlat(int x, int y) {
@@ -98,7 +99,7 @@ void IsingMCWorker::init_lattice_random()
         for (int j = 0; j < Ny; j++) {
             energy += -J*lat(i, j)*(lat(i, j+1) + lat(i+1,j));
 
-            // energy += -J * lat(i, j)*(J_lat(2 * i, j) * lat(i, j+1) + J_lat(2 * i + 1, j) * lat(i+1,j))
+            // energy += -J * lat(i, j) * (Jlat(2 * i, j) * lat(i, j + 1) + Jlat(2 * i + 1, j) * lat(i + 1, j));
 
         }
     }
@@ -124,6 +125,16 @@ void IsingMCWorker::print_system() {
     cerr << "Energy: " << energy << endl;
 }
 
+void IsingMCWorker::print_J_lattice() {
+    cerr << " === J-lattice === " << endl;
+    for (int i = 0; i < 2*Nx; i++) {
+        for (int j = 0; j < Ny; j++) {
+            cerr << (Jlat(i, j) == +1 ? '+' : '-');
+        }
+        cerr << endl;
+    }
+}
+
 void IsingMCWorker::metropolis(int time, double T, Measurer *m = nullptr)
 {
     uniform_int_distribution<int> distx(0, Nx-1);
@@ -136,7 +147,7 @@ void IsingMCWorker::metropolis(int time, double T, Measurer *m = nullptr)
             int y = disty(engine);
             int sum = lat(x-1,y) + lat(x+1, y) + lat(x,y-1) + lat(x, y+1);
 
-            // int sum = lat(x-1,y)*J_lat(2*(x-1)+1, y) + lat(x+1, y)*J_lat(2*x+1,y)  + lat(x,y-1)*J_lat(2*x,y-1) + lat(x, y+1)*J_lat(2*x,y);
+            // int sum = lat(x-1,y)*Jlat(2*(x-1)+1, y) + lat(x+1, y)*Jlat(2*x+1,y)  + lat(x,y-1)*Jlat(2*x,y-1) + lat(x, y+1)*Jlat(2*x,y);
 
             double dE = 2*J*lat(x,y)*sum;
 
@@ -287,7 +298,10 @@ int main(int argc, char* argv[])
     }
 
     IsingMCWorker mc(Nx, Ny, 1.0);
+    mc.init_J_lattice_random();
     mc.init_lattice_random();
+
+    mc.print_J_lattice();
 
     cerr << "Thermalizing...";
     mc.metropolis(Ttherm, temp);
