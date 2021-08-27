@@ -23,9 +23,14 @@ public:
     void print_J_lattice();
     void print_system();
 
-    inline short& Jlat(int x, int y) {
+    inline double& Jlatv(int x, int y) {
         // Periodic boundary conditions
-        return J_lattice[((x + (2 * Nx)) % (2 * Nx)) * Ny + (y + Ny) % Ny];
+        return jLatticeV[((x + Nx) % Nx) * Ny + (y + Ny) % Ny];
+    }
+
+    inline double& Jlath(int x, int y) {
+        // Periodic boundary conditions
+        return jLatticeH[((x + Nx) % Nx) * Ny + (y + Ny) % Ny];
     }
 
     inline short& lat(int x, int y) {
@@ -34,10 +39,11 @@ public:
     }
 
     void metropolis(int Nsteps, double T, Measurer *m);
+
     // Lattice parameters
     int Nx, Ny, Nsites;
     vector<short> lattice;
-    vector<short> J_lattice;
+    vector<double> jLatticeV, jLatticeH;
     // System parameters
     double J;
     // Observables
@@ -82,7 +88,8 @@ IsingMCWorker::IsingMCWorker(int _Nx, int _Ny, double _J)
     energy = 0.0;
     magnetization = 0.0;
     lattice.resize(Nsites);
-    J_lattice.resize(2 * Nsites);
+    jLatticeV.resize(Nsites);
+    jLatticeH.resize(Nsites);
 }
 
 void IsingMCWorker::init_lattice_random()
@@ -97,19 +104,25 @@ void IsingMCWorker::init_lattice_random()
     energy = 0.0;
     for (int i = 0; i < Nx; i++) {
         for (int j = 0; j < Ny; j++) {
-            energy += -J*lat(i, j)*(lat(i, j+1) + lat(i+1,j));
+            // energy += -J*lat(i, j)*(lat(i, j+1) + lat(i+1,j));
 
-            // energy += -J * lat(i, j) * (Jlat(2 * i, j) * lat(i, j + 1) + Jlat(2 * i + 1, j) * lat(i + 1, j));
-
+            energy += -1 * lat(i, j) * (Jlath(i, j) * lat(i, j + 1) + Jlatv(i, j) * lat(i + 1, j));
         }
     }
 }
 
 void IsingMCWorker::init_J_lattice_random()
 {
-    generate(J_lattice.begin(), J_lattice.end(), [&]() {
-        short J_rand = 2 * (rand() % 2) - 1;
-        return J_rand;
+    normal_distribution<double> jStrength(0, 0.5);
+
+    generate(jLatticeV.begin(), jLatticeV.end(), [&]() {
+        double J_randv = jStrength(engine);
+        return J_randv;
+        });
+
+    generate(jLatticeH.begin(), jLatticeH.end(), [&]() {
+        double J_randh = jStrength(engine);
+        return J_randh;
         });
 }
 
@@ -126,10 +139,18 @@ void IsingMCWorker::print_system() {
 }
 
 void IsingMCWorker::print_J_lattice() {
-    cerr << " === J-lattice === " << endl;
-    for (int i = 0; i < 2*Nx; i++) {
+    cerr << " === J-lattice (vertical) === " << endl;
+    for (int i = 0; i < Nx; i++) {
         for (int j = 0; j < Ny; j++) {
-            cerr << (Jlat(i, j) == +1 ? '+' : '-');
+            cerr << Jlatv(i, j) << " ";
+        }
+        cerr << endl;
+    }
+
+    cerr << " === J-lattice (horizontal)=== " << endl;
+    for (int i = 0; i < Nx; i++) {
+        for (int j = 0; j < Ny; j++) {
+            cerr << Jlath(i, j) << " ";
         }
         cerr << endl;
     }
@@ -145,11 +166,11 @@ void IsingMCWorker::metropolis(int time, double T, Measurer *m = nullptr)
         for (long int j = 0; j < Nsites; j++) {
             int x = distx(engine);
             int y = disty(engine);
-            int sum = lat(x-1,y) + lat(x+1, y) + lat(x,y-1) + lat(x, y+1);
+            // int sum = lat(x-1,y) + lat(x+1, y) + lat(x,y-1) + lat(x, y+1);
 
-            // int sum = lat(x-1,y)*Jlat(2*(x-1)+1, y) + lat(x+1, y)*Jlat(2*x+1,y)  + lat(x,y-1)*Jlat(2*x,y-1) + lat(x, y+1)*Jlat(2*x,y);
+            int sum = lat(x-1,y)*Jlatv(x-1,y)+lat(x+1,y)*Jlatv(x, y)+lat(x, y - 1)*Jlath(x,y-1)+lat(x, y + 1)*Jlath(x,y);
+            double dE = 2*lat(x,y)*sum;
 
-            double dE = 2*J*lat(x,y)*sum;
 
             if (dE <= 0 || distmc(engine) < exp(-dE/T))
             {
@@ -297,22 +318,26 @@ int main(int argc, char* argv[])
         corr_time_dt = atof(argv[7]);
     }
 
+    std::srand(std::time(nullptr));
+
     IsingMCWorker mc(Nx, Ny, 1.0);
     mc.init_J_lattice_random();
     mc.init_lattice_random();
 
-    mc.print_J_lattice();
+    // mc.print_J_lattice();
+    mc.print_system();
 
     cerr << "Thermalizing...";
     mc.metropolis(Ttherm, temp);
     cerr << "done" << endl;
+
+    mc.print_system();
 
     cerr << "Measuring...";
     Measurer m(&mc);
     mc.metropolis(Tmc, temp, &m);
     cerr << "done" << endl;
 
-    mc.print_system();
 
     cerr << "Calculating...";
 
