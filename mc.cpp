@@ -97,7 +97,7 @@ void IsingMCWorker::init_lattice_random()
         for (int j = 0; j < Ny; j++) {
             energy += -J*lat(i, j)*(lat(i, j+1) + lat(i+1,j));
 
-            // energy += -lat(i, j)*(J_lat(2 * i, j) * lat(i, j+1) + J_lat(2 * i + 1, j) * lat(i+1,j))
+            // energy += -J * lat(i, j)*(J_lat(2 * i, j) * lat(i, j+1) + J_lat(2 * i + 1, j) * lat(i+1,j))
 
         }
     }
@@ -134,6 +134,8 @@ void IsingMCWorker::metropolis(int time, double T, Measurer *m = nullptr)
             int x = distx(engine);
             int y = disty(engine);
             int sum = lat(x-1,y) + lat(x+1, y) + lat(x,y-1) + lat(x, y+1);
+
+            // int sum = lat(x-1,y)*J_lat(2*(x-1)+1, y) + lat(x+1, y)*J_lat(2*x+1,y)  + lat(x,y-1)*J_lat(2*x,y-1) + lat(x, y+1)*J_lat(2*x,y);
 
             double dE = 2*J*lat(x,y)*sum;
 
