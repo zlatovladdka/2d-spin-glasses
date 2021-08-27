@@ -81,6 +81,7 @@ IsingMCWorker::IsingMCWorker(int _Nx, int _Ny, double _J)
     energy = 0.0;
     magnetization = 0.0;
     lattice.resize(Nsites);
+    J_lattice.resize(2 * Nsites);
 }
 
 void IsingMCWorker::init_lattice_random()
