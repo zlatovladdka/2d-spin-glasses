@@ -7,6 +7,8 @@
 #include <numeric>
 #include <random>
 
+#include "argh.h"
+
 using namespace std;
 
 static random_device r;
@@ -19,6 +21,7 @@ public:
     IsingMCWorker(int _Nx, int _Ny, double _J);
 
     void init_J_lattice_random();
+    void init_J_lattice_const();
     void init_lattice_random();
     void print_J_lattice();
     void print_system();
@@ -58,6 +61,9 @@ public:
 
     void calc_results();
     void print_results();
+
+    void print_energy_history();
+    void print_magnetization_history();
 
     void spin_flip(int x, int y, int time);
     void calc_avg(int maxtime);
@@ -113,17 +119,21 @@ void IsingMCWorker::init_lattice_random()
 
 void IsingMCWorker::init_J_lattice_random()
 {
-    normal_distribution<double> jStrength(0, 0.5);
+    normal_distribution<double> jStrength(0, J);
 
     generate(jLatticeV.begin(), jLatticeV.end(), [&]() {
-        double J_randv = jStrength(engine);
-        return J_randv;
+        return jStrength(engine);
         });
 
     generate(jLatticeH.begin(), jLatticeH.end(), [&]() {
-        double J_randh = jStrength(engine);
-        return J_randh;
+        return jStrength(engine);
         });
+}
+
+void IsingMCWorker::init_J_lattice_const()
+{
+    fill(jLatticeV.begin(), jLatticeV.end(), J);
+    fill(jLatticeH.begin(), jLatticeH.end(), J);
 }
 
 void IsingMCWorker::print_system() {
@@ -206,7 +216,7 @@ void Measurer::calc_results()
     energy /= energies.size();
     energy /= system->Nsites;
 
-    energy_fluct = accumulate(energies.begin(), energies.end(), 0.0, 
+    energy_fluct = accumulate(energies.begin(), energies.end(), 0.0,
             [](double sum, double energy){ return sum + energy*energy; } );
     energy_fluct /= energies.size();
     energy_fluct /= system->Nsites*system->Nsites;
@@ -217,7 +227,7 @@ void Measurer::calc_results()
     magnetization /= magnetizations.size();
     magnetization /= system->Nsites;
 
-    magnetization_fluct = accumulate(magnetizations.begin(), magnetizations.end(), 0.0, 
+    magnetization_fluct = accumulate(magnetizations.begin(), magnetizations.end(), 0.0,
             [](double sum, double magn){ return sum + magn*magn; } );
     magnetization_fluct /= magnetizations.size();
     magnetization_fluct /= system->Nsites*system->Nsites;
@@ -246,7 +256,7 @@ int Measurer::autocorr_helper(vector<int> times, int maxtime, int diff)
     short flag = +1;
 
     int curt = diff;
-    
+
     for (int i = 0; (i < times.size()) && (times[i] < diff); i++)
         flag = -flag;
     for (auto p : timesSort) {
@@ -293,63 +303,140 @@ double Measurer::calc_autocorr(int maxtime, int diff)
     return sum;
 }
 
+void Measurer::print_energy_history() {
+    for (double E : energies) {
+        cout << E << endl;
+    }
+}
+
+void Measurer::print_magnetization_history() {
+    for (double M : magnetizations) {
+        cout << M << endl;
+    }
+}
 
 void Measurer::print_results()
 {
+    cerr << "Energy: ";
     cout << energy << " " << energy_fluct << endl;
+    cerr << "Magnetization: ";
     cout << magnetization << " " << magnetization_fluct << endl;
 
 }
 
+static void print_usage(argh::parser& cmd) {
+    cerr << "Usage: " << cmd(0).str() << " [OPTIONS]" << endl;
+    cerr << endl;
+    cerr << "Available options are:" << endl;
+    cerr << "   -v, --verbose   Be more verbose" << endl;
+    cerr << "   -h, --help      Print this help message" << endl;
+    cerr << endl;
+    cerr << "System parameters:" << endl;
+    cerr << "   -x, --nx NX     System size along X direction" << endl;
+    cerr << "   -y, --ny NY     System size along Y direction" << endl;
+    cerr << "   --temp          Temperature for MC simulation" << endl;
+    cerr << "   -J J            Coupling constant (default: 1.0)" << endl;
+    cerr << "   -g, --glass     Initialize J couplings from Gaussian distribution (default: constant)" << endl;
+    cerr << "   --therm TIME    Run TIME thermalization sweeps before measuring (default: 0)" << endl;
+    cerr << "   --time TIME     Run TIME MC sweeps with measurements" << endl;
+    cerr << endl;
+    cerr << "Results reporting:" << endl;
+    cerr << "   --energy-history            Print energy dependence on the MC time" << endl;
+    cerr << "   --magnetization-history     Print magnetization dependence on the MC time" << endl;
+    cerr << "   --autocorr MAXTIME          Calculate single-spin autocorrelation function up to time MAXTIME" << endl;
+    cerr << "   --autocorr-dt DT            Calculate autocorrelation function each DT sweeps (default: 1.0)" << endl;
+}
+
 int main(int argc, char* argv[])
 {
-    int Nx, Ny, Ttherm, Tmc;
-    double temp, corr_time_dt, corr_time_max;
-    if (argc != 8) {
-        cerr << "Usage: " << argv[0] << " [Nx] [Ny] [temp] [Ttherm] [Tmc] [corr_time_max] [corr_time_dt]" << endl;
-        return -1;
+    // 
+    // Command line parsing
+    //
+    argh::parser cmd(argc, argv, argh::parser::PREFER_PARAM_FOR_UNREG_OPTION);
+
+    if (cmd[{"-h", "--help"}]) {
+        print_usage(cmd);
+        return 0;
+    }
+    bool verbose = cmd[ {"-v", "--verbose"} ];
+    // System size
+    int Nx, Ny;
+    if (!(cmd({"-x", "--nx"}) >> Nx) || !(cmd({"-y", "--ny"}) >> Ny)) {
+        cerr << "Please specify system size!" << endl;
+        print_usage(cmd);
+        return 1;
+    }
+    // Coupling constant
+    double J;
+    cmd("-J", 1.0) >> J;
+    // Initializing MC worker
+    IsingMCWorker mc(Nx, Ny, J);
+
+    mc.init_lattice_random();
+    if (cmd({"-g", "--glass"})) {
+        cerr << "Initializing random couplings" << endl;
+        mc.init_J_lattice_random();
     } else {
-        Nx = atoi(argv[1]);
-        Ny = atoi(argv[2]);
-        temp = atof(argv[3]);
-        Ttherm = atoi(argv[4]);
-        Tmc = atoi(argv[5]);
-        corr_time_max = atof(argv[6]);
-        corr_time_dt = atof(argv[7]);
+        cerr << "Initializing constant couplings" << endl;
+        mc.init_J_lattice_const();
     }
 
-    std::srand(std::time(nullptr));
+    if (verbose) {
+        mc.print_J_lattice();
+    }
 
-    IsingMCWorker mc(Nx, Ny, 1.0);
-    mc.init_J_lattice_random();
-    mc.init_lattice_random();
+    // Temperature
+    double temp;
+    if (!(cmd({"-t", "--temp"}) >> temp)) {
+        cerr << "Please specify temperature!" << endl;
+        print_usage(cmd);
+        return 1;
+    }
 
-    // mc.print_J_lattice();
-    mc.print_system();
+    // Thermalization
+    int Ttherm;
+    cmd("--therm", 0) >> Ttherm;
+    if (Ttherm > 0) {
+        cerr << "Thermalizing... ";
+        mc.metropolis(Ttherm, temp);
+        cerr << "done!" << endl;
+    }
 
-    cerr << "Thermalizing...";
-    mc.metropolis(Ttherm, temp);
-    cerr << "done" << endl;
-
-    mc.print_system();
-
-    cerr << "Measuring...";
+    if (verbose) {
+        mc.print_system();
+    }
+    // Measuring
+    int Tmc;
+    if (!(cmd("--time") >> Tmc)) {
+        cerr << "Please provide Monte-Carlo time!" << endl;
+        print_usage(cmd);
+        return 1;
+    }
+    cerr << "Running Monte-Carlo... ";
     Measurer m(&mc);
     mc.metropolis(Tmc, temp, &m);
-    cerr << "done" << endl;
-
-
-    cerr << "Calculating...";
+    cerr << "done!" << endl;
 
     m.calc_results();
     m.calc_avg(Tmc*mc.Nsites);
+
     m.print_results();
 
-    for (double t = 0; t < corr_time_max; t += corr_time_dt) {
-        cout << t << " " << m.calc_autocorr(Tmc*mc.Nsites, round(t*mc.Nsites)) << endl;
+    if (cmd["--energy-history"]) {
+        cerr << "Energies:" << endl;
+        m.print_energy_history();
     }
-
-    cerr << "done" << endl;
+    if (cmd["--magnetization-history"]) {
+        cerr << "Magnetizations:" << endl;
+        m.print_magnetization_history();
+    }
+    double autocorr, autocorr_dt;
+    if ((cmd("--autocorr") >> autocorr) && (cmd("--autocorr-dt", 1.0) >> autocorr_dt)) {
+        cerr << "Single-spin autocorrelations:" << endl;
+        for (double t = 0; t < autocorr; t += autocorr_dt) {
+            cout << t << " " << m.calc_autocorr(Tmc*mc.Nsites, round(t*mc.Nsites)) << endl;
+        }
+    }
 
     return 0;
 }

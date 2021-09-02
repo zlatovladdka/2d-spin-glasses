@@ -38,7 +38,8 @@ Nmc = args.Nmc
 tmax = args.tmax
 dt = args.dt
 
-opts = ["./mc", str(Nx), str(Ny), str(temp), str(Ntherm), str(Nmc), str(tmax), str(dt)]
+opts = ["./mc", "-x", str(Nx), "-y", str(Ny), "--temp", str(temp), "--therm", str(Ntherm), "--time", str(Nmc), 
+        "--autocorr", str(tmax), "--autocorr-dt", str(dt)]
 
 client = pymongo.MongoClient(args.host, args.port)
 
