@@ -304,14 +304,14 @@ double Measurer::calc_autocorr(int maxtime, int diff)
 }
 
 void Measurer::print_energy_history() {
-    for (double E : energies) {
-        cout << E << endl;
+    for (int i = 0; i < energies.size(); i++) {
+        cout << i << " " << energies[i] << endl;
     }
 }
 
 void Measurer::print_magnetization_history() {
-    for (double M : magnetizations) {
-        cout << M << endl;
+    for (int i = 0; i < magnetizations.size(); i++) {
+        cout << i << " " << magnetizations[i] << endl;
     }
 }
 
@@ -372,7 +372,6 @@ int main(int argc, char* argv[])
     // Initializing MC worker
     IsingMCWorker mc(Nx, Ny, J);
 
-    mc.init_lattice_random();
     if (cmd({"-g", "--glass"})) {
         cerr << "Initializing random couplings" << endl;
         mc.init_J_lattice_random();
@@ -380,6 +379,7 @@ int main(int argc, char* argv[])
         cerr << "Initializing constant couplings" << endl;
         mc.init_J_lattice_const();
     }
+    mc.init_lattice_random();
 
     if (verbose) {
         mc.print_J_lattice();
