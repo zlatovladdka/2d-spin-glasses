@@ -62,6 +62,7 @@ public:
     void calc_results();
     void print_results();
 
+    void print_spin_average();
     void print_energy_history();
     void print_magnetization_history();
 
@@ -303,6 +304,15 @@ double Measurer::calc_autocorr(int maxtime, int diff)
     return sum;
 }
 
+void Measurer::print_spin_average() {
+    for (int i = 0; i < system->Nx; i++) {
+        for (int j = 0; j < system->Ny; j++) {
+            cout << spin_avg[i*system->Ny + j] << " ";
+        }
+        cout << endl;
+    }
+}
+
 void Measurer::print_energy_history() {
     for (int i = 0; i < energies.size(); i++) {
         cout << i << " " << energies[i] << endl;
@@ -341,6 +351,7 @@ static void print_usage(argh::parser& cmd) {
     cerr << "   --time TIME     Run TIME MC sweeps with measurements" << endl;
     cerr << endl;
     cerr << "Results reporting:" << endl;
+    cerr << "   --spin-average              Print average values of each spin" << endl;
     cerr << "   --energy-history            Print energy dependence on the MC time" << endl;
     cerr << "   --magnetization-history     Print magnetization dependence on the MC time" << endl;
     cerr << "   --autocorr MAXTIME          Calculate single-spin autocorrelation function up to time MAXTIME" << endl;
@@ -421,6 +432,11 @@ int main(int argc, char* argv[])
     m.calc_avg(Tmc*mc.Nsites);
 
     m.print_results();
+
+    if (cmd["--spin-average"]) {
+        cerr << "Average values of spins:" << endl;
+        m.print_spin_average();
+    }
 
     if (cmd["--energy-history"]) {
         cerr << "Energies:" << endl;
