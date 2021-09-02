@@ -100,9 +100,10 @@ IsingMCWorker::IsingMCWorker(int _Nx, int _Ny, double _J)
 
 void IsingMCWorker::init_lattice_random()
 {
+    uniform_int_distribution<int> spin_dist(0, 1);
     magnetization = 0;
     generate(lattice.begin(), lattice.end(), [&]() {
-                short s = 2 * (rand() % 2) - 1;
+                short s = 2 * spin_dist(engine) - 1;
                 magnetization += s;
                 return s;
             });
@@ -178,9 +179,8 @@ void IsingMCWorker::metropolis(int time, double T, Measurer *m = nullptr)
             int y = disty(engine);
             // int sum = lat(x-1,y) + lat(x+1, y) + lat(x,y-1) + lat(x, y+1);
 
-            int sum = lat(x-1,y)*Jlatv(x-1,y)+lat(x+1,y)*Jlatv(x, y)+lat(x, y - 1)*Jlath(x,y-1)+lat(x, y + 1)*Jlath(x,y);
+            double sum = lat(x-1,y)*Jlatv(x-1,y)+lat(x+1,y)*Jlatv(x, y)+lat(x, y - 1)*Jlath(x,y-1)+lat(x, y + 1)*Jlath(x,y);
             double dE = 2*lat(x,y)*sum;
-
 
             if (dE <= 0 || distmc(engine) < exp(-dE/T))
             {
@@ -372,7 +372,7 @@ int main(int argc, char* argv[])
     // Initializing MC worker
     IsingMCWorker mc(Nx, Ny, J);
 
-    if (cmd({"-g", "--glass"})) {
+    if (cmd[{"-g", "--glass"}]) {
         cerr << "Initializing random couplings" << endl;
         mc.init_J_lattice_random();
     } else {
