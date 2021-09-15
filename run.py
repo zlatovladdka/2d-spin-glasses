@@ -2,6 +2,7 @@
 
 import numpy as np
 import subprocess
+from multiprocessing import Pool, Process
 
 import pymongo
 import gridfs
@@ -16,6 +17,8 @@ parser = argparse.ArgumentParser(description="Ising model solver")
 sim_group = parser.add_argument_group("Simulation")
 sim_group.add_argument("-s", "--size", help="Size of the system", type=int, nargs=2, required=True)
 sim_group.add_argument("-T", "--temperature", help="Temperature", type=float, required=True)
+sim_group.add_argument("--type", help="Type of couplings: const or random", type=str, required=True)
+sim_group.add_argument("--seed", help="Random seed for J-lattice generation", type=int, required=True)
 mc_group = parser.add_argument_group("Monte-Carlo")
 mc_group.add_argument("--Ntherm", help="Number of steps for thermalization", type=int, default=10000)
 mc_group.add_argument("--Nmc", help="Number of steps used for measurements", type=int, default=10000)
@@ -31,6 +34,12 @@ args = parser.parse_args()
 Nx = args.size[0]
 Ny = args.size[1]
 temp = args.temperature
+rand_seed = args.seed
+type = args.type
+if str(type) == "random":
+    flag = 1
+else:
+    flag = 0
 
 Ntherm = args.Ntherm
 Nmc = args.Nmc
@@ -38,18 +47,19 @@ Nmc = args.Nmc
 tmax = args.tmax
 dt = args.dt
 
-opts = ["./mc", "-x", str(Nx), "-y", str(Ny), "--temp", str(temp), "--therm", str(Ntherm), "--time", str(Nmc), 
-        "--autocorr", str(tmax), "--autocorr-dt", str(dt)]
+opts = ["./new_ising.exe", "-x", str(Nx), "-y", str(Ny), "--temp", str(temp), "--therm", str(Ntherm), "--time", str(Nmc), 
+        "--autocorr", str(tmax), "--autocorr-dt", str(dt), "-g" * flag + " ", "--seed", str(rand_seed)]
 
 client = pymongo.MongoClient(args.host, args.port)
 
-while True:
+def run_mc():
     data = subprocess.check_output(opts, stderr=subprocess.DEVNULL)
     data = list(map(float, data.split()))
     print("Got system (E={0:.3f}, M={1:.3f})".format(data[0], data[2]))
     result = {"Nx": Nx,
               "Ny": Ny,
               "T": temp,
+              "Seed": rand_seed,
               "Ntherm": Ntherm,
               "Nmc": Nmc,
               "Energy": data[0],
@@ -61,10 +71,22 @@ while True:
     print(data[4::2])
     print(data[5::2])
     while True:
-        try:
-            client.numerics.ising.insert_one(result)
-        except (pymongo.errors.ConnectionFailure, pymongo.errors.ServerSelectionTimeoutError) as e:
-            print("Connection to DB failed, retrying...")
+        if flag == 1:
+            try:
+                client.numerics.glass.insert_one(result)
+            except (pymongo.errors.ConnectionFailure, pymongo.errors.ServerSelectionTimeoutError) as e:
+                print("Connection to DB failed, retrying...")
+            else:
+                print("Data inserted successfully to glass table!")
+                break
         else:
-            print("Data inserted successfully!")
-            break
+            try:
+                client.numerics.ising.insert_one(result)
+            except (pymongo.errors.ConnectionFailure, pymongo.errors.ServerSelectionTimeoutError) as e:
+                print("Connection to DB failed, retrying...")
+            else:
+                print("Data inserted successfully to ising table!")
+                break
+
+while True:
+    run_mc()
