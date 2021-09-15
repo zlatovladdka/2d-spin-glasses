@@ -20,7 +20,7 @@ class IsingMCWorker {
 public:
     IsingMCWorker(int _Nx, int _Ny, double _J);
 
-    void init_J_lattice_random();
+    void init_J_lattice_random(int seed);
     void init_J_lattice_const();
     void init_lattice_random();
     void print_J_lattice();
@@ -119,16 +119,20 @@ void IsingMCWorker::init_lattice_random()
     }
 }
 
-void IsingMCWorker::init_J_lattice_random()
+void IsingMCWorker::init_J_lattice_random(int seed)
 {
+    static random_device jr;
+    static default_random_engine jengine(jr());
+    jengine.seed(seed);
+
     normal_distribution<double> jStrength(0, J);
 
     generate(jLatticeV.begin(), jLatticeV.end(), [&]() {
-        return jStrength(engine);
+        return jStrength(jengine);
         });
 
     generate(jLatticeH.begin(), jLatticeH.end(), [&]() {
-        return jStrength(engine);
+        return jStrength(jengine);
         });
 }
 
@@ -315,7 +319,8 @@ void Measurer::print_spin_average() {
 
 void Measurer::print_energy_history() {
     for (int i = 0; i < energies.size(); i++) {
-        cout << i << " " << energies[i] << endl;
+        // cout << i << " " << energies[i] << endl;
+        cout << " " << energies[i];
     }
 }
 
@@ -349,6 +354,7 @@ static void print_usage(argh::parser& cmd) {
     cerr << "   -g, --glass     Initialize J couplings from Gaussian distribution (default: constant)" << endl;
     cerr << "   --therm TIME    Run TIME thermalization sweeps before measuring (default: 0)" << endl;
     cerr << "   --time TIME     Run TIME MC sweeps with measurements" << endl;
+    cerr << "   --seed SEED     Random seed for J-lattice generation" << endl;
     cerr << endl;
     cerr << "Results reporting:" << endl;
     cerr << "   --spin-average              Print average values of each spin" << endl;
@@ -383,9 +389,15 @@ int main(int argc, char* argv[])
     // Initializing MC worker
     IsingMCWorker mc(Nx, Ny, J);
 
+    int randSeed;
     if (cmd[{"-g", "--glass"}]) {
+        if (!(cmd({ "--seed" }) >> randSeed)) {
+            cerr << "Please specify random seed!" << endl;
+            print_usage(cmd);
+            return 1;
+        }
         cerr << "Initializing random couplings" << endl;
-        mc.init_J_lattice_random();
+        mc.init_J_lattice_random(randSeed);
     } else {
         cerr << "Initializing constant couplings" << endl;
         mc.init_J_lattice_const();
