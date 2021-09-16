@@ -52,14 +52,14 @@ opts = ["./new_ising.exe", "-x", str(Nx), "-y", str(Ny), "--temp", str(temp), "-
 
 client = pymongo.MongoClient(args.host, args.port)
 
-def run_mc():
+def run_mc(seed):
     data = subprocess.check_output(opts, stderr=subprocess.DEVNULL)
     data = list(map(float, data.split()))
     print("Got system (E={0:.3f}, M={1:.3f})".format(data[0], data[2]))
     result = {"Nx": Nx,
               "Ny": Ny,
               "T": temp,
-              "Seed": rand_seed,
+              "Seed": seed,
               "Ntherm": Ntherm,
               "Nmc": Nmc,
               "Energy": data[0],
@@ -88,5 +88,7 @@ def run_mc():
                 print("Data inserted successfully to ising table!")
                 break
 
-while True:
-    run_mc()
+if __name__ == "__main__":
+    while True:
+        with Pool(6) as p:
+            p.map(run_mc, [rand_seed]*6)
