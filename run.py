@@ -31,7 +31,7 @@ db_group = parser.add_argument_group("Database")
 db_group.add_argument("-H", "--host", help="MongoDB hostname", type=str, default='c1.itp.ac.ru')
 db_group.add_argument("-P", "--port", help="MongoDB port", type=int, default=27017)
 core_group = parser.add_argument_group("Multiprocessing")
-core_group.add_argument("-c", help="Number of parallel processes", type=int, default=1)
+core_group.add_argument("-c","--cores", help="Number of parallel processes", type=int, default=1)
 
 args = parser.parse_args()
 
@@ -51,18 +51,17 @@ Nmc = args.Nmc
 tmax = args.tmax
 dt = args.dt
 
-n = int(args.c)
+n = int(args.cores)
 
 opts = ["./mc", "-x", str(Nx), "-y", str(Ny), "--temp", str(temp), "--therm", str(Ntherm), "--time", str(Nmc), 
         "--autocorr", str(tmax), "--autocorr-dt", str(dt), "-g" * flag + " "]
 
 
-
 def run_mc(seed):
     if args.seed is not None:
-	rand_seed = args.seed
+    	rand_seed = args.seed
     else:
-	rand_seed = int(datetime.datetime.now().timestamp() * 1e6)
+	    rand_seed = int(datetime.datetime.now().timestamp() * 1e6)
     
     client = pymongo.MongoClient(args.host, args.port)
     data = subprocess.check_output(opts, stderr=subprocess.DEVNULL)
