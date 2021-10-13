@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+
+import datetime
 import numpy as np
 import subprocess
 from multiprocessing import Pool, Process
@@ -18,7 +20,7 @@ sim_group = parser.add_argument_group("Simulation")
 sim_group.add_argument("-s", "--size", help="Size of the system", type=int, nargs=2, required=True)
 sim_group.add_argument("-T", "--temperature", help="Temperature", type=float, required=True)
 sim_group.add_argument("--type", help="Type of couplings: const or random", type=str, required=True)
-sim_group.add_argument("--seed", help="Random seed for J-lattice generation", type=int, required=True)
+sim_group.add_argument("--seed", help="Random seed for J-lattice generation", type=int)
 mc_group = parser.add_argument_group("Monte-Carlo")
 mc_group.add_argument("--Ntherm", help="Number of steps for thermalization", type=int, default=10000)
 mc_group.add_argument("--Nmc", help="Number of steps used for measurements", type=int, default=10000)
@@ -52,11 +54,17 @@ dt = args.dt
 n = int(args.c)
 
 opts = ["./mc", "-x", str(Nx), "-y", str(Ny), "--temp", str(temp), "--therm", str(Ntherm), "--time", str(Nmc), 
-        "--autocorr", str(tmax), "--autocorr-dt", str(dt), "-g" * flag + " ", "--seed", str(rand_seed)]
+        "--autocorr", str(tmax), "--autocorr-dt", str(dt), "-g" * flag + " "]
 
-client = pymongo.MongoClient(args.host, args.port)
+
 
 def run_mc(seed):
+    if args.seed is not None:
+	rand_seed = args.seed
+    else:
+	rand_seed = int(datetime.datetime.now().timestamp() * 1e6)
+    
+    client = pymongo.MongoClient(args.host, args.port)
     data = subprocess.check_output(opts, stderr=subprocess.DEVNULL)
     data = list(map(float, data.split()))
     print("Got system (E={0:.3f}, M={1:.3f})".format(data[0], data[2]))
