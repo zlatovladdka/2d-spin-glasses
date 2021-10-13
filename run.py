@@ -51,7 +51,7 @@ dt = args.dt
 
 n = int(args.c)
 
-opts = ["./new_ising.exe", "-x", str(Nx), "-y", str(Ny), "--temp", str(temp), "--therm", str(Ntherm), "--time", str(Nmc), 
+opts = ["./mc", "-x", str(Nx), "-y", str(Ny), "--temp", str(temp), "--therm", str(Ntherm), "--time", str(Nmc), 
         "--autocorr", str(tmax), "--autocorr-dt", str(dt), "-g" * flag + " ", "--seed", str(rand_seed)]
 
 client = pymongo.MongoClient(args.host, args.port)
