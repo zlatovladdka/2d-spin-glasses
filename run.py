@@ -1,10 +1,8 @@
 #!/usr/bin/python3
 
-
 import datetime
 import numpy as np
 import subprocess
-from multiprocessing import Pool, Process
 
 import pymongo
 import gridfs
@@ -30,8 +28,6 @@ corr_group.add_argument("--dt", help="Time step for autocorrelation function", d
 db_group = parser.add_argument_group("Database")
 db_group.add_argument("-H", "--host", help="MongoDB hostname", type=str, default='c1.itp.ac.ru')
 db_group.add_argument("-P", "--port", help="MongoDB port", type=int, default=27017)
-core_group = parser.add_argument_group("Multiprocessing")
-core_group.add_argument("-c","--cores", help="Number of parallel processes", type=int, default=1)
 
 args = parser.parse_args()
 
@@ -39,11 +35,7 @@ Nx = args.size[0]
 Ny = args.size[1]
 temp = args.temperature
 rand_seed = args.seed
-type = args.type
-if str(type) == "random":
-    flag = 1
-else:
-    flag = 0
+tp = args.type
 
 Ntherm = args.Ntherm
 Nmc = args.Nmc
@@ -51,18 +43,23 @@ Nmc = args.Nmc
 tmax = args.tmax
 dt = args.dt
 
-n = int(args.cores)
+options = ["/home-parma/vtemkin/code/2d-spin-glasses/mc", "-x", str(Nx), "-y", str(Ny), "--temp", str(temp), "--therm", str(Ntherm), "--time", str(Nmc), 
+        "--autocorr", str(tmax), "--autocorr-dt", str(dt)]
 
-opts = ["./mc", "-x", str(Nx), "-y", str(Ny), "--temp", str(temp), "--therm", str(Ntherm), "--time", str(Nmc), 
-        "--autocorr", str(tmax), "--autocorr-dt", str(dt), "-g" * flag + " "]
+flag = False
+if str(tp).lower() == "random":
+    options += ["-g"]
+    flag = True
 
 
-def run_mc(seed):
+def run_mc(opts):
     if args.seed is not None:
     	rand_seed = args.seed
     else:
 	    rand_seed = int(datetime.datetime.now().timestamp() * 1e6)
     
+    opts += ["--seed", str(rand_seed)]
+
     client = pymongo.MongoClient(args.host, args.port)
     data = subprocess.check_output(opts, stderr=subprocess.DEVNULL)
     data = list(map(float, data.split()))
@@ -70,7 +67,7 @@ def run_mc(seed):
     result = {"Nx": Nx,
               "Ny": Ny,
               "T": temp,
-              "Seed": seed,
+              "Seed": rand_seed,
               "Ntherm": Ntherm,
               "Nmc": Nmc,
               "Energy": data[0],
@@ -82,7 +79,7 @@ def run_mc(seed):
     print(data[4::2])
     print(data[5::2])
     while True:
-        if flag == 1:
+        if flag:
             try:
                 client.numerics.glass.insert_one(result)
             except (pymongo.errors.ConnectionFailure, pymongo.errors.ServerSelectionTimeoutError) as e:
@@ -99,7 +96,6 @@ def run_mc(seed):
                 print("Data inserted successfully to ising table!")
                 break
 
-if __name__ == "__main__":
-    while True:
-        with Pool(n) as p:
-            p.map(run_mc, [rand_seed]*n)
+
+while True:
+    run_mc(options)

@@ -389,7 +389,7 @@ int main(int argc, char* argv[])
     // Initializing MC worker
     IsingMCWorker mc(Nx, Ny, J);
 
-    int randSeed;
+    long long randSeed;
     if (cmd[{"-g", "--glass"}]) {
         if (!(cmd({ "--seed" }) >> randSeed)) {
             cerr << "Please specify random seed!" << endl;
