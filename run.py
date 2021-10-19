@@ -43,8 +43,7 @@ Nmc = args.Nmc
 tmax = args.tmax
 dt = args.dt
 
-options = ["/home-parma/vtemkin/code/2d-spin-glasses/mc", "-x", str(Nx), "-y", str(Ny), "--temp", str(temp), "--therm", str(Ntherm), "--time", str(Nmc), 
-        "--autocorr", str(tmax), "--autocorr-dt", str(dt)]
+options = ["/home-parma/vtemkin/code/2d-spin-glasses/mc", "-x", str(Nx), "-y", str(Ny), "--temp", str(temp), "--therm", str(Ntherm), "--time", str(Nmc), "--autocorr", str(tmax), "--autocorr-dt", str(dt)]
 
 flag = False
 if str(tp).lower() == "random":
