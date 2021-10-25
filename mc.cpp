@@ -67,8 +67,8 @@ public:
     void print_magnetization_history();
 
     void spin_flip(int x, int y, int time);
-    void calc_avg(int maxtime);
-    double calc_autocorr(int maxtime, int diff);
+    void calc_avg(long maxtime);
+    double calc_autocorr(long maxtime, int diff);
 
     double energy = 0.0;
     double energy_fluct = 0.0;
@@ -83,10 +83,10 @@ private:
     vector<vector<int>> flip_times;
     vector<double> spin_avg;
 
-    int maxtime = 0;
+    long maxtime = 0;
 
-    static int autocorr_helper(vector<int> times, int maxtime, int diff);
-    static int avg_helper(vector<int> times, int maxtime);
+    static int autocorr_helper(vector<int> times, long maxtime, int diff);
+    static int avg_helper(vector<int> times, long maxtime);
 };
 
 IsingMCWorker::IsingMCWorker(int _Nx, int _Ny, double _J)
@@ -241,7 +241,7 @@ void Measurer::calc_results()
 
 }
 
-int Measurer::autocorr_helper(vector<int> times, int maxtime, int diff)
+int Measurer::autocorr_helper(vector<int> times, long maxtime, int diff)
 {
     int sum = 0;
     vector<int> timesSort;
@@ -273,7 +273,7 @@ int Measurer::autocorr_helper(vector<int> times, int maxtime, int diff)
     return sum;
 }
 
-int Measurer::avg_helper(vector<int> times, int maxtime)
+int Measurer::avg_helper(vector<int> times, long maxtime)
 {
     if (times.size() == 0)
         return maxtime;
@@ -289,7 +289,7 @@ int Measurer::avg_helper(vector<int> times, int maxtime)
     return sum;
 }
 
-void Measurer::calc_avg(int maxtime)
+void Measurer::calc_avg(long maxtime)
 {
     spin_avg.resize(system->Nsites);
     for (int i = 0; i < system->Nsites; i++) {
@@ -297,7 +297,7 @@ void Measurer::calc_avg(int maxtime)
     }
 }
 
-double Measurer::calc_autocorr(int maxtime, int diff)
+double Measurer::calc_autocorr(long maxtime, int diff)
 {
     double sum = 0;
     for (int i = 0; i < system->Nsites; i++) {
@@ -417,7 +417,7 @@ int main(int argc, char* argv[])
     }
 
     // Thermalization
-    int Ttherm;
+    long Ttherm;
     cmd("--therm", 0) >> Ttherm;
     if (Ttherm > 0) {
         cerr << "Thermalizing... ";
@@ -429,7 +429,7 @@ int main(int argc, char* argv[])
         mc.print_system();
     }
     // Measuring
-    int Tmc;
+    long long Tmc;
     if (!(cmd("--time") >> Tmc)) {
         cerr << "Please provide Monte-Carlo time!" << endl;
         print_usage(cmd);
