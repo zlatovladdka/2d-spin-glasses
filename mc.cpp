@@ -66,7 +66,7 @@ public:
     void print_energy_history();
     void print_magnetization_history();
 
-    void spin_flip(int x, int y, int time);
+    void spin_flip(int x, int y, long time);
     void calc_avg(long maxtime);
     double calc_autocorr(long maxtime, int diff);
 
@@ -80,13 +80,13 @@ private:
     vector<int> magnetizations;
     vector<double> energies;
 
-    vector<vector<int>> flip_times;
+    vector<vector<long>> flip_times;
     vector<double> spin_avg;
 
     long maxtime = 0;
 
-    static int autocorr_helper(vector<int> times, long maxtime, int diff);
-    static int avg_helper(vector<int> times, long maxtime);
+    static int autocorr_helper(vector<long> times, long maxtime, int diff);
+    static int avg_helper(vector<long> times, long maxtime);
 };
 
 IsingMCWorker::IsingMCWorker(int _Nx, int _Ny, double _J)
@@ -114,7 +114,7 @@ void IsingMCWorker::init_lattice_random()
         for (int j = 0; j < Ny; j++) {
             // energy += -J*lat(i, j)*(lat(i, j+1) + lat(i+1,j));
 
-            energy += -1 * lat(i, j) * (Jlath(i, j) * lat(i, j + 1) + Jlatv(i, j) * lat(i + 1, j));
+            energy += -J * lat(i, j) * (Jlath(i, j) * lat(i, j + 1) + Jlatv(i, j) * lat(i + 1, j));
         }
     }
 }
@@ -185,7 +185,7 @@ void IsingMCWorker::metropolis(int time, double T, Measurer *m = nullptr)
             // int sum = lat(x-1,y) + lat(x+1, y) + lat(x,y-1) + lat(x, y+1);
 
             double sum = lat(x-1,y)*Jlatv(x-1,y)+lat(x+1,y)*Jlatv(x, y)+lat(x, y - 1)*Jlath(x,y-1)+lat(x, y + 1)*Jlath(x,y);
-            double dE = 2*lat(x,y)*sum;
+            double dE = 2*lat(x,y)*sum*J;
 
             if (dE <= 0 || distmc(engine) < exp(-dE/T))
             {
@@ -211,7 +211,7 @@ void Measurer::measure()
     energies.push_back(system->energy);
 }
 
-void Measurer::spin_flip(int x, int y, int time) {
+void Measurer::spin_flip(int x, int y, long time) {
     flip_times[x*system->Ny + y].push_back(time);
 }
 
@@ -241,10 +241,10 @@ void Measurer::calc_results()
 
 }
 
-int Measurer::autocorr_helper(vector<int> times, long maxtime, int diff)
+int Measurer::autocorr_helper(vector<long> times, long maxtime, int diff)
 {
     int sum = 0;
-    vector<int> timesSort;
+    vector<long> timesSort;
 
     for (int i = 0; i < times.size(); i++) {
         if (times[i] >= diff) {
@@ -273,7 +273,7 @@ int Measurer::autocorr_helper(vector<int> times, long maxtime, int diff)
     return sum;
 }
 
-int Measurer::avg_helper(vector<int> times, long maxtime)
+int Measurer::avg_helper(vector<long> times, long maxtime)
 {
     if (times.size() == 0)
         return maxtime;
@@ -285,7 +285,7 @@ int Measurer::avg_helper(vector<int> times, long maxtime)
         flag = -flag;
         curt = times[i];
     }
-    sum += (maxtime - times[times.size()-1])*flag;
+    sum += (maxtime- times[times.size()-1])*flag;
     return sum;
 }
 
@@ -301,7 +301,7 @@ double Measurer::calc_autocorr(long maxtime, int diff)
 {
     double sum = 0;
     for (int i = 0; i < system->Nsites; i++) {
-        sum += (double)Measurer::autocorr_helper(flip_times[i], maxtime, diff) / (maxtime - diff) - spin_avg[i]*spin_avg[i];
+        sum += (double)Measurer::autocorr_helper(flip_times[i], maxtime, diff) / (maxtime - diff) - (double)spin_avg[i]*spin_avg[i];
     }
     sum /= system->Nsites;
 
@@ -429,7 +429,7 @@ int main(int argc, char* argv[])
         mc.print_system();
     }
     // Measuring
-    long long Tmc;
+    long Tmc;
     if (!(cmd("--time") >> Tmc)) {
         cerr << "Please provide Monte-Carlo time!" << endl;
         print_usage(cmd);
