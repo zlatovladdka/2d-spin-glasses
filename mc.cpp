@@ -20,7 +20,7 @@ class IsingMCWorker {
 public:
     IsingMCWorker(int _Nx, int _Ny, double _J);
 
-    void init_J_lattice_random(int seed);
+    void init_J_lattice_random(long long seed);
     void init_J_lattice_const();
     void init_lattice_random();
     void print_J_lattice();
@@ -66,9 +66,9 @@ public:
     void print_energy_history();
     void print_magnetization_history();
 
-    void spin_flip(int x, int y, long time);
-    void calc_avg(long maxtime);
-    double calc_autocorr(long maxtime, int diff);
+    void spin_flip(int x, int y, long long time);
+    void calc_avg(long long maxtime);
+    double calc_autocorr(long long maxtime, int diff);
 
     double energy = 0.0;
     double energy_fluct = 0.0;
@@ -80,13 +80,13 @@ private:
     vector<int> magnetizations;
     vector<double> energies;
 
-    vector<vector<long>> flip_times;
+    vector<vector<long long>> flip_times;
     vector<double> spin_avg;
 
-    long maxtime = 0;
+    long long maxtime = 0;
 
-    static int autocorr_helper(vector<long> times, long maxtime, int diff);
-    static int avg_helper(vector<long> times, long maxtime);
+    static long long autocorr_helper(vector<long long> times, long long maxtime, int diff);
+    static long long avg_helper(vector<long long> times, long long maxtime);
 };
 
 IsingMCWorker::IsingMCWorker(int _Nx, int _Ny, double _J)
@@ -119,7 +119,7 @@ void IsingMCWorker::init_lattice_random()
     }
 }
 
-void IsingMCWorker::init_J_lattice_random(int seed)
+void IsingMCWorker::init_J_lattice_random(long long seed)
 {
     static random_device jr;
     static default_random_engine jengine(jr());
@@ -211,7 +211,7 @@ void Measurer::measure()
     energies.push_back(system->energy);
 }
 
-void Measurer::spin_flip(int x, int y, long time) {
+void Measurer::spin_flip(int x, int y, long long time) {
     flip_times[x*system->Ny + y].push_back(time);
 }
 
@@ -241,12 +241,12 @@ void Measurer::calc_results()
 
 }
 
-int Measurer::autocorr_helper(vector<long> times, long maxtime, int diff)
+long long Measurer::autocorr_helper(vector<long long> times, long long maxtime, int diff)
 {
-    int sum = 0;
-    vector<long> timesSort;
+    long long sum = 0;
+    vector<long long> timesSort;
 
-    for (int i = 0; i < times.size(); i++) {
+    for (long int i = 0; i < times.size(); i++) {
         if (times[i] >= diff) {
             timesSort.push_back(times[i]);
         }
@@ -260,9 +260,9 @@ int Measurer::autocorr_helper(vector<long> times, long maxtime, int diff)
 
     short flag = +1;
 
-    int curt = diff;
+    long long curt = diff;
 
-    for (int i = 0; (i < times.size()) && (times[i] < diff); i++)
+    for (long int i = 0; (i < times.size()) && (times[i] < diff); i++)
         flag = -flag;
     for (auto p : timesSort) {
         sum += (p - curt)*flag;
@@ -273,11 +273,11 @@ int Measurer::autocorr_helper(vector<long> times, long maxtime, int diff)
     return sum;
 }
 
-int Measurer::avg_helper(vector<long> times, long maxtime)
+long long Measurer::avg_helper(vector<long long> times, long long maxtime)
 {
     if (times.size() == 0)
         return maxtime;
-    int sum = 0;
+    long long sum = 0;
     int curt = 0;
     int flag = +1;
     for (int i = 0; i < times.size(); i++) {
@@ -285,11 +285,11 @@ int Measurer::avg_helper(vector<long> times, long maxtime)
         flag = -flag;
         curt = times[i];
     }
-    sum += (maxtime- times[times.size()-1])*flag;
+    sum += (maxtime - curt)*flag;
     return sum;
 }
 
-void Measurer::calc_avg(long maxtime)
+void Measurer::calc_avg(long long maxtime)
 {
     spin_avg.resize(system->Nsites);
     for (int i = 0; i < system->Nsites; i++) {
@@ -297,11 +297,11 @@ void Measurer::calc_avg(long maxtime)
     }
 }
 
-double Measurer::calc_autocorr(long maxtime, int diff)
+double Measurer::calc_autocorr(long long maxtime, int diff)
 {
     double sum = 0;
     for (int i = 0; i < system->Nsites; i++) {
-        sum += (double)Measurer::autocorr_helper(flip_times[i], maxtime, diff) / (maxtime - diff) - (double)spin_avg[i]*spin_avg[i];
+        sum += (double)Measurer::autocorr_helper(flip_times[i], maxtime, diff) / (maxtime - diff) - spin_avg[i]*spin_avg[i];
     }
     sum /= system->Nsites;
 
