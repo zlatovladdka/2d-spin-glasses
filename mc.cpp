@@ -41,7 +41,7 @@ public:
         return lattice[((x + Nx)%Nx)*Ny + (y+Ny)%Ny];
     }
 
-    void metropolis(int Nsteps, double T, Measurer *m);
+    void metropolis(long long Nsteps, double T, Measurer *m);
 
     // Lattice parameters
     int Nx, Ny, Nsites;
@@ -172,12 +172,12 @@ void IsingMCWorker::print_J_lattice() {
     }
 }
 
-void IsingMCWorker::metropolis(int time, double T, Measurer *m = nullptr)
+void IsingMCWorker::metropolis(long long time, double T, Measurer *m = nullptr)
 {
     uniform_int_distribution<int> distx(0, Nx-1);
     uniform_int_distribution<int> disty(0, Ny-1);
     uniform_real_distribution<double> distmc(0, 1);
-	for (long int i = 0; i < time; i++)
+	for (long long i = 0; i < time; i++)
 	{
         for (long int j = 0; j < Nsites; j++) {
             int x = distx(engine);
@@ -319,7 +319,6 @@ void Measurer::print_spin_average() {
 
 void Measurer::print_energy_history() {
     for (int i = 0; i < energies.size(); i++) {
-        // cout << i << " " << energies[i] << endl;
         cout << " " << energies[i];
     }
 }
@@ -417,7 +416,7 @@ int main(int argc, char* argv[])
     }
 
     // Thermalization
-    int Ttherm;
+    long long Ttherm;
     cmd("--therm", 0) >> Ttherm;
     if (Ttherm > 0) {
         cerr << "Thermalizing... ";
@@ -429,7 +428,7 @@ int main(int argc, char* argv[])
         mc.print_system();
     }
     // Measuring
-    int Tmc;
+    long long Tmc;
     if (!(cmd("--time") >> Tmc)) {
         cerr << "Please provide Monte-Carlo time!" << endl;
         print_usage(cmd);
