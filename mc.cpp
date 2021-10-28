@@ -278,7 +278,7 @@ long long Measurer::avg_helper(vector<long long> times, long long maxtime)
     if (times.size() == 0)
         return maxtime;
     long long sum = 0;
-    int curt = 0;
+    long long curt = 0;
     int flag = +1;
     for (int i = 0; i < times.size(); i++) {
         sum += (times[i] - curt)*flag;
@@ -417,7 +417,7 @@ int main(int argc, char* argv[])
     }
 
     // Thermalization
-    long Ttherm;
+    int Ttherm;
     cmd("--therm", 0) >> Ttherm;
     if (Ttherm > 0) {
         cerr << "Thermalizing... ";
@@ -429,7 +429,7 @@ int main(int argc, char* argv[])
         mc.print_system();
     }
     // Measuring
-    long Tmc;
+    int Tmc;
     if (!(cmd("--time") >> Tmc)) {
         cerr << "Please provide Monte-Carlo time!" << endl;
         print_usage(cmd);
