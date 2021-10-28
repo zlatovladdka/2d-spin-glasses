@@ -68,7 +68,7 @@ public:
 
     void spin_flip(int x, int y, long long time);
     void calc_avg(long long maxtime);
-    double calc_autocorr(long long maxtime, int diff);
+    double calc_autocorr(long long maxtime, long long diff);
 
     double energy = 0.0;
     double energy_fluct = 0.0;
@@ -85,7 +85,7 @@ private:
 
     long long maxtime = 0;
 
-    static long long autocorr_helper(vector<long long> times, long long maxtime, int diff);
+    static long long autocorr_helper(vector<long long> times, long long maxtime, long long diff);
     static long long avg_helper(vector<long long> times, long long maxtime);
 };
 
@@ -241,7 +241,7 @@ void Measurer::calc_results()
 
 }
 
-long long Measurer::autocorr_helper(vector<long long> times, long long maxtime, int diff)
+long long Measurer::autocorr_helper(vector<long long> times, long long maxtime, long long diff)
 {
     long long sum = 0;
     vector<long long> timesSort;
@@ -297,7 +297,7 @@ void Measurer::calc_avg(long long maxtime)
     }
 }
 
-double Measurer::calc_autocorr(long long maxtime, int diff)
+double Measurer::calc_autocorr(long long maxtime, long long diff)
 {
     double sum = 0;
     for (int i = 0; i < system->Nsites; i++) {
