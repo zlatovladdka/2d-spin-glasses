@@ -179,7 +179,7 @@ void IsingMCWorker::metropolis(long long time, double T, Measurer *m = nullptr)
     uniform_real_distribution<double> distmc(0, 1);
 	for (long long i = 0; i < time; i++)
 	{
-        for (long int j = 0; j < Nsites; j++) {
+        for (int j = 0; j < Nsites; j++) {
             int x = distx(engine);
             int y = disty(engine);
             // int sum = lat(x-1,y) + lat(x+1, y) + lat(x,y-1) + lat(x, y+1);
@@ -246,7 +246,7 @@ long long Measurer::autocorr_helper(vector<long long> times, long long maxtime, 
     long long sum = 0;
     vector<long long> timesSort;
 
-    for (long int i = 0; i < times.size(); i++) {
+    for (long long i = 0; i < times.size(); i++) {
         if (times[i] >= diff) {
             timesSort.push_back(times[i]);
         }
@@ -262,7 +262,7 @@ long long Measurer::autocorr_helper(vector<long long> times, long long maxtime, 
 
     long long curt = diff;
 
-    for (long int i = 0; (i < times.size()) && (times[i] < diff); i++)
+    for (long long i = 0; (i < times.size()) && (times[i] < diff); i++)
         flag = -flag;
     for (auto p : timesSort) {
         sum += (p - curt)*flag;
@@ -280,7 +280,7 @@ long long Measurer::avg_helper(vector<long long> times, long long maxtime)
     long long sum = 0;
     long long curt = 0;
     int flag = +1;
-    for (int i = 0; i < times.size(); i++) {
+    for (long long i = 0; i < times.size(); i++) {
         sum += (times[i] - curt)*flag;
         flag = -flag;
         curt = times[i];
