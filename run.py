@@ -3,6 +3,7 @@
 import datetime
 import numpy as np
 import subprocess
+from multiprocessing import Pool, Process
 
 import pymongo
 import gridfs
@@ -28,6 +29,7 @@ corr_group.add_argument("--dt", help="Time step for autocorrelation function", d
 db_group = parser.add_argument_group("Database")
 db_group.add_argument("-H", "--host", help="MongoDB hostname", type=str, default='c1.itp.ac.ru')
 db_group.add_argument("-P", "--port", help="MongoDB port", type=int, default=27017)
+
 
 args = parser.parse_args()
 
@@ -56,8 +58,10 @@ def run_mc(opts):
     	rand_seed = args.seed
     else:
 	    rand_seed = int(datetime.datetime.now().timestamp() * 1e6)
-    
-    opts += ["--seed", str(rand_seed)]
+    if "--seed" not in opts:
+        opts += ["--seed", str(rand_seed)]
+    else:
+        opts[-1] = str(rand_seed)
 
     client = pymongo.MongoClient(args.host, args.port)
     data = subprocess.check_output(opts, stderr=subprocess.DEVNULL)
@@ -95,6 +99,8 @@ def run_mc(opts):
                 print("Data inserted successfully to ising table!")
                 break
 
+if __name__ == "__main__":
+    while True:
+        with Pool(16) as p:
+            p.map(run_mc, [options]*16)
 
-while True:
-    run_mc(options)
