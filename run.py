@@ -29,7 +29,8 @@ corr_group.add_argument("--dt", help="Time step for autocorrelation function", d
 db_group = parser.add_argument_group("Database")
 db_group.add_argument("-H", "--host", help="MongoDB hostname", type=str, default='c1.itp.ac.ru')
 db_group.add_argument("-P", "--port", help="MongoDB port", type=int, default=27017)
-
+prl_group = parser.add_argument_group("Parallelization")
+prl_group.add_argument("--Nproc", help="Number of parallel processes", type=int, default=1)
 
 args = parser.parse_args()
 
@@ -44,6 +45,8 @@ Nmc = args.Nmc
 
 tmax = args.tmax
 dt = args.dt
+
+n = args.Nproc
 
 options = ["/home-parma/vtemkin/code/2d-spin-glasses/mc", "-x", str(Nx), "-y", str(Ny), "--temp", str(temp), "--therm", str(Ntherm), "--time", str(Nmc), "--autocorr", str(tmax), "--autocorr-dt", str(dt)]
 
@@ -101,6 +104,6 @@ def run_mc(opts):
 
 if __name__ == "__main__":
     while True:
-        with Pool(16) as p:
-            p.map(run_mc, [options]*16)
+        with Pool(n) as p:
+            p.map(run_mc, [options]*n)
 
