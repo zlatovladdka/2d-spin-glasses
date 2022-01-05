@@ -20,7 +20,7 @@ class IsingMCWorker {
 public:
     IsingMCWorker(int _Nx, int _Ny, double _J);
 
-    void init_J_lattice_random(long long seed);
+    void init_J_lattice_random(long long seed, int distType);
     void init_J_lattice_const();
     void init_lattice_random();
     void print_J_lattice();
@@ -119,21 +119,34 @@ void IsingMCWorker::init_lattice_random()
     }
 }
 
-void IsingMCWorker::init_J_lattice_random(long long seed)
+void IsingMCWorker::init_J_lattice_random(long long seed, int distType)
 {
     static random_device jr;
     static default_random_engine jengine(jr());
     jengine.seed(seed);
 
-    normal_distribution<double> jStrength(0, J);
+    if (distType == 0) {
+        normal_distribution<double> jStrength(0, J);
 
-    generate(jLatticeV.begin(), jLatticeV.end(), [&]() {
-        return jStrength(jengine);
-        });
+        generate(jLatticeV.begin(), jLatticeV.end(), [&]() {
+            return jStrength(jengine);
+            });
 
-    generate(jLatticeH.begin(), jLatticeH.end(), [&]() {
-        return jStrength(jengine);
-        });
+        generate(jLatticeH.begin(), jLatticeH.end(), [&]() {
+            return jStrength(jengine);
+            });
+    }
+    else {
+        uniform_int_distribution<> jStrength(0, 1);
+
+        generate(jLatticeV.begin(), jLatticeV.end(), [&]() {
+            return J * (jStrength(jengine) * 2 - 1);
+            });
+
+        generate(jLatticeH.begin(), jLatticeH.end(), [&]() {
+            return J * (jStrength(jengine) * 2 - 1);
+            });
+    }
 }
 
 void IsingMCWorker::init_J_lattice_const()
@@ -350,7 +363,8 @@ static void print_usage(argh::parser& cmd) {
     cerr << "   -y, --ny NY     System size along Y direction" << endl;
     cerr << "   --temp          Temperature for MC simulation" << endl;
     cerr << "   -J J            Coupling constant (default: 1.0)" << endl;
-    cerr << "   -g, --glass     Initialize J couplings from Gaussian distribution (default: constant)" << endl;
+    cerr << "   -g, --glass     Initialize random J couplings (default: constant)" << endl;
+    cerr << "   -d, --dist      Distribution (0 - Gaussian, 1 - plus-minus J) (default: 0 - Gaussian)" << endl;
     cerr << "   --therm TIME    Run TIME thermalization sweeps before measuring (default: 0)" << endl;
     cerr << "   --time TIME     Run TIME MC sweeps with measurements" << endl;
     cerr << "   --seed SEED     Random seed for J-lattice generation" << endl;
@@ -385,6 +399,13 @@ int main(int argc, char* argv[])
     // Coupling constant
     double J;
     cmd("-J", 1.0) >> J;
+
+    // Coupling distribution
+    int distType;
+    if (!(cmd({ "-d", "-dist" }) >> distType)) {
+        distType = 0;
+    }
+
     // Initializing MC worker
     IsingMCWorker mc(Nx, Ny, J);
 
@@ -396,7 +417,7 @@ int main(int argc, char* argv[])
             return 1;
         }
         cerr << "Initializing random couplings" << endl;
-        mc.init_J_lattice_random(randSeed);
+        mc.init_J_lattice_random(randSeed, distType);   
     } else {
         cerr << "Initializing constant couplings" << endl;
         mc.init_J_lattice_const();
