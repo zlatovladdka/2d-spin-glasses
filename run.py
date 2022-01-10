@@ -20,7 +20,7 @@ sim_group.add_argument("-s", "--size", help="Size of the system", type=int, narg
 sim_group.add_argument("-T", "--temperature", help="Temperature", type=float, required=True)
 sim_group.add_argument("--type", help="Type of couplings: const or random", type=str, required=True)
 sim_group.add_argument("--seed", help="Random seed for J-lattice generation", type=int)
-sim_group.add_argument("-d", "--dist", help="Distribution for J-lattice generation: 0 - Normal, 1 - uniform plus-minus J", type=int, defaut=0)
+sim_group.add_argument("-d", "--dist", help="Distribution for J-lattice generation: 0 - Normal, 1 - uniform plus-minus J", type=int, default=0)
 mc_group = parser.add_argument_group("Monte-Carlo")
 mc_group.add_argument("--Ntherm", help="Number of steps for thermalization", type=int, default=10000)
 mc_group.add_argument("--Nmc", help="Number of steps used for measurements", type=int, default=10000)

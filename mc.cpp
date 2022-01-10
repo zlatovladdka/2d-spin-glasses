@@ -6,6 +6,7 @@
 #include <map>
 #include <numeric>
 #include <random>
+#include <stdio.h>
 
 #include "argh.h"
 
@@ -401,9 +402,9 @@ int main(int argc, char* argv[])
     cmd("-J", 1.0) >> J;
 
     // Coupling distribution
-    int distType;
-    if (!(cmd({ "-d", "-dist" }) >> distType)) {
-        distType = 0;
+    int dist;
+    if (!(cmd({ "-d", "--dist" }) >> dist)) {
+        dist = 0;
     }
 
     // Initializing MC worker
@@ -417,7 +418,7 @@ int main(int argc, char* argv[])
             return 1;
         }
         cerr << "Initializing random couplings" << endl;
-        mc.init_J_lattice_random(randSeed, distType);   
+        mc.init_J_lattice_random(randSeed, dist);   
     } else {
         cerr << "Initializing constant couplings" << endl;
         mc.init_J_lattice_const();
