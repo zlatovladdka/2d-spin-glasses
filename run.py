@@ -27,7 +27,7 @@ mc_group.add_argument("--Nmc", help="Number of steps used for measurements", typ
 corr_group = parser.add_argument_group("Autocorrelator")
 corr_group.add_argument("--tmax", help="Maximal time to measure autocorrelation function", type=float, default=5.0)
 corr_group.add_argument("--dt", help="Time step for autocorrelation function", type=float, default=0.5)
-corr_group.add_argument("--bin", help="Bin size for averaging over spin flips", type=int, default=0)
+corr_group.add_argument("--bsize", help="Bin size for averaging over spin flips", type=int, default=0)
 db_group = parser.add_argument_group("Database")
 db_group.add_argument("-H", "--host", help="MongoDB hostname", type=str, default='c1.itp.ac.ru')
 db_group.add_argument("-P", "--port", help="MongoDB port", type=int, default=27017)
@@ -48,11 +48,11 @@ Nmc = args.Nmc
 
 tmax = args.tmax
 dt = args.dt
-bin = args.bin
+bin_size = args.bsize
 
 n = args.Nproc
 
-options = ["/home-parma/vtemkin/code/2d-spin-glasses/mc", "-x", str(Nx), "-y", str(Ny), "--temp", str(temp), "--dist", str(distType), "--therm", str(Ntherm), "--time", str(Nmc), "--autocorr", str(tmax), "--autocorr-dt", str(dt), "--bin-size", str(bin)]
+options = ["/home-parma/vtemkin/code/2d-spin-glasses/mc", "-x", str(Nx), "-y", str(Ny), "--temp", str(temp), "--dist", str(distType), "--therm", str(Ntherm), "--time", str(Nmc), "--autocorr", str(tmax), "--autocorr-dt", str(dt), "--bin-size", str(bin_size)]
 
 flag = False
 if str(tp).lower() == "random":
@@ -81,6 +81,7 @@ def run_mc(opts):
               "Distribution": distType,
               "Ntherm": Ntherm,
               "Nmc": Nmc,
+              "Bin size": bin_size,
               "Energy": data[0],
               "Energy2": data[1],
               "Magnetization": data[2],
