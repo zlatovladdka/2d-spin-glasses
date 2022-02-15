@@ -24,6 +24,7 @@ public:
     void init_J_lattice_random(long long seed, int distType);
     void init_J_lattice_const();
     void init_lattice_random();
+    void init_flip_count();
     void print_J_lattice();
     void print_system();
 
@@ -42,11 +43,17 @@ public:
         return lattice[((x + Nx)%Nx)*Ny + (y+Ny)%Ny];
     }
 
-    void metropolis(long long Nsteps, double T, Measurer *m);
+    inline int& count_lat(int x, int y) {
+        // Periodic boundary conditions
+        return count_lattice[((x + Nx) % Nx) * Ny + (y + Ny) % Ny];
+    }
+
+    void metropolis(long long Nsteps, double T, Measurer *m, int bin_size);
 
     // Lattice parameters
     int Nx, Ny, Nsites;
     vector<short> lattice;
+    vector<int> count_lattice;
     vector<double> jLatticeV, jLatticeH;
     // System parameters
     double J;
@@ -96,6 +103,7 @@ IsingMCWorker::IsingMCWorker(int _Nx, int _Ny, double _J)
     energy = 0.0;
     magnetization = 0.0;
     lattice.resize(Nsites);
+    count_lattice.resize(Nsites);
     jLatticeV.resize(Nsites);
     jLatticeH.resize(Nsites);
 }
@@ -113,8 +121,6 @@ void IsingMCWorker::init_lattice_random()
     energy = 0.0;
     for (int i = 0; i < Nx; i++) {
         for (int j = 0; j < Ny; j++) {
-            // energy += -J*lat(i, j)*(lat(i, j+1) + lat(i+1,j));
-
             energy += -J * lat(i, j) * (Jlath(i, j) * lat(i, j + 1) + Jlatv(i, j) * lat(i + 1, j));
         }
     }
@@ -156,6 +162,11 @@ void IsingMCWorker::init_J_lattice_const()
     fill(jLatticeH.begin(), jLatticeH.end(), J);
 }
 
+void IsingMCWorker::init_flip_count()
+{
+    fill(count_lattice.begin(), count_lattice.end(), 0);
+}
+
 void IsingMCWorker::print_system() {
     cerr << " === System state === " << endl;
     for (int i = 0; i < Nx; i++) {
@@ -186,31 +197,53 @@ void IsingMCWorker::print_J_lattice() {
     }
 }
 
-void IsingMCWorker::metropolis(long long time, double T, Measurer *m = nullptr)
+void IsingMCWorker::metropolis(long long time, double T, Measurer *m = nullptr, int bin_size = 0)
 {
     uniform_int_distribution<int> distx(0, Nx-1);
     uniform_int_distribution<int> disty(0, Ny-1);
     uniform_real_distribution<double> distmc(0, 1);
-	for (long long i = 0; i < time; i++)
-	{
+
+    for (long long i = 0; i < time; i++)
+    {
         for (int j = 0; j < Nsites; j++) {
             int x = distx(engine);
             int y = disty(engine);
-            // int sum = lat(x-1,y) + lat(x+1, y) + lat(x,y-1) + lat(x, y+1);
 
-            double sum = lat(x-1,y)*Jlatv(x-1,y)+lat(x+1,y)*Jlatv(x, y)+lat(x, y - 1)*Jlath(x,y-1)+lat(x, y + 1)*Jlath(x,y);
-            double dE = 2*lat(x,y)*sum*J;
+            double sum = lat(x - 1, y) * Jlatv(x - 1, y) + lat(x + 1, y) * Jlatv(x, y) + lat(x, y - 1) * Jlath(x, y - 1) + lat(x, y + 1) * Jlath(x, y);
+            double dE = 2 * lat(x, y) * sum * J;
 
-            if (dE <= 0 || distmc(engine) < exp(-dE/T))
+            if (dE <= 0 || distmc(engine) < exp(-dE / T))
             {
                 lat(x, y) = -lat(x, y);
-                magnetization += 2*lat(x,y);
+                magnetization += 2 * lat(x, y);
                 energy += dE;
-                if (m) m->spin_flip(x, y, i*Nsites + j);
+
+                count_lat(x, y) = count_lat(x, y) + 1;
+
+
+                if (m) {
+                    if (bin_size == 0) {
+                        m->spin_flip(x, y, i * Nsites + j);
+                    }
+
+                }
             }
         }
-        if (m) m->measure();
-	}
+
+        if (m) {
+            if ((bin_size > 0) && (i % bin_size == 0)) {
+                for (int k = 0; k < Nx; k++) {
+                    for (int l = 0; l < Ny; l++) {
+                        if (count_lat(k, l) % 2 == 1) {
+                            m->spin_flip(k, l, i * Nsites);
+                        }
+                        count_lat(k, l) = 0;
+                    }
+                }
+            }
+            m->measure();
+        }   
+    }
 }
 
 Measurer::Measurer(IsingMCWorker *_system)
@@ -369,6 +402,7 @@ static void print_usage(argh::parser& cmd) {
     cerr << "   --therm TIME    Run TIME thermalization sweeps before measuring (default: 0)" << endl;
     cerr << "   --time TIME     Run TIME MC sweeps with measurements" << endl;
     cerr << "   --seed SEED     Random seed for J-lattice generation" << endl;
+    cerr << "   --bin-size      Bin-size for averaging over spin flips in order for faster autocorr func calculation" << endl;
     cerr << endl;
     cerr << "Results reporting:" << endl;
     cerr << "   --spin-average              Print average values of each spin" << endl;
@@ -376,6 +410,7 @@ static void print_usage(argh::parser& cmd) {
     cerr << "   --magnetization-history     Print magnetization dependence on the MC time" << endl;
     cerr << "   --autocorr MAXTIME          Calculate single-spin autocorrelation function up to time MAXTIME" << endl;
     cerr << "   --autocorr-dt DT            Calculate autocorrelation function each DT sweeps (default: 1.0)" << endl;
+
 }
 
 int main(int argc, char* argv[])
@@ -410,6 +445,7 @@ int main(int argc, char* argv[])
     // Initializing MC worker
     IsingMCWorker mc(Nx, Ny, J);
 
+    // initializing random seed
     long long randSeed;
     if (cmd[{"-g", "--glass"}]) {
         if (!(cmd({ "--seed" }) >> randSeed)) {
@@ -424,6 +460,14 @@ int main(int argc, char* argv[])
         mc.init_J_lattice_const();
     }
     mc.init_lattice_random();
+
+    // initializing bin size
+    int bin;
+    if (!(cmd({ "--bin-size" }) >> bin)) {
+        bin = 0;
+    }
+
+    mc.init_flip_count();
 
     if (verbose) {
         mc.print_J_lattice();
@@ -458,7 +502,7 @@ int main(int argc, char* argv[])
     }
     cerr << "Running Monte-Carlo... ";
     Measurer m(&mc);
-    mc.metropolis(Tmc, temp, &m);
+    mc.metropolis(Tmc, temp, &m, bin);
     cerr << "done!" << endl;
 
     m.calc_results();
