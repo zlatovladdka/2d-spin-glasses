@@ -3,7 +3,6 @@
 import datetime
 import numpy as np
 import subprocess
-from multiprocessing import Pool, Process
 
 import pymongo
 import gridfs
@@ -81,7 +80,7 @@ def run_mc(opts):
               "Distribution": distType,
               "Ntherm": Ntherm,
               "Nmc": Nmc,
-              "Bin size": bin_size,
+              "Bin_size": bin_size,
               "Energy": data[0],
               "Energy2": data[1],
               "Magnetization": data[2],
@@ -108,8 +107,6 @@ def run_mc(opts):
                 print("Data inserted successfully to ising table!")
                 break
 
-if __name__ == "__main__":
-    while True:
-        with Pool(n) as p:
-            p.map(run_mc, [options]*n)
+while True:
+    run_mc(options)
 
